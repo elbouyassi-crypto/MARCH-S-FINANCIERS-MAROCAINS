@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard MASI — Marchés Financiers Marocains</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #006633;
+      --primary-dark: #004d26;
+      --primary-light: #00884d;
+      --secondary: #D4A017;
+      --secondary-light: #f0bc3a;
+      --bg: #f0f4f1;
+      --card-bg: #ffffff;
+      --text: #1a2e22;
+      --text-light: #5a7a65;
+      --border: #d0e4d8;
+      --shadow: 0 2px 16px rgba(0,102,51,0.10);
+      --shadow-hover: 0 6px 28px rgba(0,102,51,0.18);
+      --positive: #006633;
+      --negative: #c0392b;
+      --neutral: #7f8c8d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 60%, var(--primary-light) 100%);
+      color: white;
+      padding: 28px 40px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -40%; right: -10%;
+      width: 420px; height: 420px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 50%;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -60%; left: 20%;
+      width: 300px; height: 300px;
+      background: rgba(212,160,23,0.08);
+      border-radius: 50%;
+    }
+    .header-left { position: relative; z-index: 1; }
+    .header-badge {
+      display: inline-block;
+      background: var(--secondary);
+      color: #1a1a1a;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+    .header-sub { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+    .header-right { position: relative; z-index: 1; text-align: right; }
+    .header-date { font-size: 13px; opacity: 0.75; }
+    .header-masi-val { font-size: 32px; font-weight: 800; color: var(--secondary-light); }
+    .header-masi-var {
+      font-size: 15px; font-weight: 600;
+      padding: 3px 10px; border-radius: 12px;
+      display: inline-block; margin-top: 4px;
+    }
+    .var-pos { background: rgba(0,200,80,0.25); color: #00e676; }
+    .var-neg { background: rgba(255,80,80,0.25); color: #ff5252; }
+
+    /* NAV TABS */
+    .nav-tabs {
+      background: var(--primary-dark);
+      display: flex;
+      padding: 0 40px;
+      gap: 4px;
+      overflow-x: auto;
+    }
+    .nav-tab {
+      color: rgba(255,255,255,0.6);
+      padding: 12px 20px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .nav-tab:hover { color: rgba(255,255,255,0.9); }
+    .nav-tab.active { color: var(--secondary-light); border-bottom-color: var(--secondary); }
+
+    /* MAIN */
+    .main { padding: 28px 40px; max-width: 1600px; margin: 0 auto; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* KPI CARDS */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 20px 22px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--primary);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: -20px; right: -20px;
+      width: 80px; height: 80px;
+      background: var(--primary);
+      opacity: 0.04;
+      border-radius: 50%;
+    }
+    .kpi-card.gold { border-left-color: var(--secondary); }
+    .kpi-card.gold .kpi-icon { color: var(--secondary); }
+    .kpi-label { font-size: 11px; font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+    .kpi-value { font-size: 26px; font-weight: 800; color: var(--text); line-height: 1; }
+    .kpi-sub { font-size: 12px; color: var(--text-light); margin-top: 6px; }
+    .kpi-badge {
+      display: inline-block;
+      font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 10px;
+      margin-top: 5px;
+    }
+    .badge-up { background: #e8f5e9; color: #2e7d32; }
+    .badge-down { background: #ffebee; color: #c62828; }
+
+    /* CHARTS GRID */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+    .charts-grid.wide { grid-template-columns: 1fr; }
+    .charts-grid.three { grid-template-columns: repeat(3, 1fr); }
+    .chart-card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.2s;
+    }
+    .chart-card:hover { box-shadow: var(--shadow-hover); }
+    .chart-card.full { grid-column: 1 / -1; }
+    .chart-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chart-title-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      flex-shrink: 0;
+    }
+    .chart-title-dot.gold { background: var(--secondary); }
+    .chart-sub { font-size: 11px; color: var(--text-light); margin-bottom: 16px; }
+    .chart-container { position: relative; height: 280px; }
+    .chart-container.tall { height: 360px; }
+    .chart-container.short { height: 200px; }
+
+    /* TABLE */
+    .table-card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 28px;
+    }
+    .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .table-title { font-size: 14px; font-weight: 700; color: var(--text); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      background: var(--primary);
+      color: white;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    thead th:first-child { border-radius: 8px 0 0 0; }
+    thead th:last-child { border-radius: 0 8px 0 0; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    tbody tr:hover { background: #f0f8f4; }
+    tbody td { padding: 9px 14px; color: var(--text); }
+    tbody td.positive { color: var(--positive); font-weight: 600; }
+    tbody td.negative { color: var(--negative); font-weight: 600; }
+    .pagination { display: flex; gap: 6px; align-items: center; margin-top: 14px; justify-content: flex-end; }
+    .page-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .page-btn:hover, .page-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .page-info { font-size: 12px; color: var(--text-light); }
+
+    /* FOOTER */
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-light);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 10px;
+    }
+    .footer strong { color: var(--primary); }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .header { flex-direction: column; gap: 16px; padding: 20px; text-align: center; }
+      .header-right { text-align: center; }
+      .main { padding: 16px; }
+      .nav-tabs { padding: 0 10px; }
+      .charts-grid { grid-template-columns: 1fr !important; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span class="header-badge">🇲🇦 Bourse de Casablanca</span>
+    <h1>Dashboard — Marchés Financiers Marocains</h1>
+    <div class="header-sub">ENCG Settat — Université Hassan 1er &nbsp;|&nbsp; Analyse des Indices & Indicateurs Macro</div>
+  </div>
+  <div class="header-right">
+    <div class="header-date">Dernière séance disponible</div>
+    <div class="header-masi-val" id="hdrMasi">—</div>
+    <div class="header-masi-var var-pos" id="hdrVar">—</div>
+  </div>
+</div>
+
+<div class="nav-tabs">
+  <button class="nav-tab active" onclick="switchTab('masi')">📈 MASI & Indices</button>
+  <button class="nav-tab" onclick="switchTab('macro')">🏦 Indicateurs Macro</button>
+  <button class="nav-tab" onclick="switchTab('secteurs')">🏭 Indices Sectoriels</button>
+  <button class="nav-tab" onclick="switchTab('taux')">💹 Taux & Marché Monétaire</button>
+</div>
+
+<div class="main">
+
+  <!-- TAB 1: MASI -->
+  <div class="tab-content active" id="tab-masi">
+    <div class="kpi-grid" id="kpiMasi"></div>
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <div class="chart-title"><span class="chart-title-dot"></span>Évolution de l'Indice MASI — 120 dernières séances</div>
+        <div class="chart-sub">Cours de clôture journalier</div>
+        <div class="chart-container tall"><canvas id="masiLine"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title"><span class="chart-title-dot gold"></span>Variations journalières (%)</div>
+        <div class="chart-sub">Performance séance par séance</div>
+        <div class="chart-container"><canvas id="masiBar"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="chart-title-dot"></span>Fourchette Haut / Bas</div>
+        <div class="chart-sub">Cours plus haut vs plus bas par séance</div>
+        <div class="chart-container"><canvas id="masiRange"></canvas></div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">📋 Historique des séances MASI</div>
+        <div class="page-info" id="masiTableInfo"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Clôture</th><th>Plus Haut</th><th>Plus Bas</th><th>Ouverture</th><th>Veille</th><th>Variation %</th></tr></thead>
+          <tbody id="masiTableBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="masiPagination"></div>
+    </div>
+  </div>
+
+  <!-- TAB 2: MACRO -->
+  <div class="tab-content" id="tab-macro">
+    <div class="kpi-grid" id="kpiMacro"></div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title"><span class="chart-title-dot"></span>Avoirs Officiels de Réserve (Mds MAD)</div>
+        <div class="chart-sub">Évolution hebdomadaire — 24 dernières semaines</div>
+        <div class="chart-container"><canvas id="reserveChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="chart-title-dot gold"></span>Inflation & Inflation Sous-Jacente (%)</div>
+        <div class="chart-sub">Évolution mensuelle 2022–2023</div>
+        <div class="chart-container"><canvas id="inflationChart"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <div class="chart-title"><span class="chart-title-dot"></span>Composition des Réserves — Dernière semaine</div>
+        <div class="chart-sub">Répartition par composante (Mds MAD)</div>
+        <div class="chart-container short" style="max-width:400px; margin: 0 auto"><canvas id="reserveDonut"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: SECTEURS -->
+  <div class="tab-content" id="tab-secteurs">
+    <div class="kpi-grid" id="kpiSect"></div>
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <div class="chart-title"><span class="chart-title-dot"></span>Performance Sectorielle — Variation totale sur la période (%)</div>
+        <div class="chart-sub">Du 31 déc. 2020 au 8 déc. 2023</div>
+        <div class="chart-container tall"><canvas id="sectChart"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <div class="chart-title"><span class="chart-title-dot gold"></span>Top 10 secteurs les plus performants</div>
+        <div class="chart-sub">Croissance en % sur la période</div>
+        <div class="chart-container"><canvas id="sectTop10"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: TAUX -->
+  <div class="tab-content" id="tab-taux">
+    <div class="kpi-grid" id="kpiTaux"></div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title"><span class="chart-title-dot"></span>Indice MONIA — 90 derniers jours</div>
+        <div class="chart-sub">Taux interbancaire au jour le jour</div>
+        <div class="chart-container"><canvas id="moniaChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="chart-title-dot gold"></span>Volume MONIA (JJ — Millions MAD)</div>
+        <div class="chart-sub">Volumes journaliers échangés</div>
+        <div class="chart-container"><canvas id="moniaVol"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <div class="chart-title"><span class="chart-title-dot"></span>Taux Moyen Pondéré (TMP) — 60 dernières séances</div>
+        <div class="chart-sub">Taux directeur de Bank Al-Maghrib</div>
+        <div class="chart-container"><canvas id="tmpChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Dashboard généré depuis le dataset MASI — <strong>ENCG Settat · Université Hassan 1er</strong> &nbsp;|&nbsp; Données : Bourse de Casablanca / Bank Al-Maghrib
+</div>
+
+<script>
+const D = {"masi": {"dates": ["2023-06-14", "2023-06-15", "2023-06-16", "2023-06-19", "2023-06-20", "2023-06-21", "2023-06-22", "2023-06-23", "2023-06-26", "2023-06-27", "2023-06-28", "2023-07-03", "2023-07-04", "2023-07-05", "2023-07-06", "2023-07-07", "2023-07-10", "2023-07-11", "2023-07-12", "2023-07-13", "2023-07-14", "2023-07-17", "2023-07-18", "2023-07-20", "2023-07-21", "2023-07-24", "2023-07-25", "2023-07-26", "2023-07-27", "2023-07-28", "2023-07-31", "2023-08-01", "2023-08-02", "2023-08-03", "2023-08-04", "2023-08-07", "2023-08-08", "2023-08-09", "2023-08-10", "2023-08-11", "2023-08-15", "2023-08-16", "2023-08-17", "2023-08-18", "2023-08-22", "2023-08-23", "2023-08-24", "2023-08-25", "2023-08-28", "2023-08-29", "2023-08-30", "2023-08-31", "2023-09-01", "2023-09-04", "2023-09-05", "2023-09-06", "2023-09-07", "2023-09-08", "2023-09-11", "2023-09-12", "2023-09-13", "2023-09-14", "2023-09-15", "2023-09-18", "2023-09-19", "2023-09-20", "2023-09-21", "2023-09-22", "2023-09-25", "2023-09-26", "2023-09-27", "2023-10-02", "2023-10-03", "2023-10-04", "2023-10-05", "2023-10-06", "2023-10-09", "2023-10-10", "2023-10-11", "2023-10-12", "2023-10-13", "2023-10-16", "2023-10-17", "2023-10-18", "2023-10-19", "2023-10-20", "2023-10-23", "2023-10-24", "2023-10-25", "2023-10-26", "2023-10-27", "2023-10-30", "2023-10-31", "2023-11-01", "2023-11-02", "2023-11-03", "2023-11-07", "2023-11-08", "2023-11-09", "2023-11-10", "2023-11-13", "2023-11-14", "2023-11-15", "2023-11-16", "2023-11-17", "2023-11-20", "2023-11-21", "2023-11-22", "2023-11-23", "2023-11-24", "2023-11-27", "2023-11-28", "2023-11-29", "2023-11-30", "2023-12-01", "2023-12-04", "2023-12-05", "2023-12-06", "2023-12-07", "2023-12-08"], "close": [11195.69, 11385.36, 11452.87, 11404.49, 11704.88, 11491.86, 11474.39, 11537.23, 11504.06, 11542.87, 11579.76, 11544.61, 11601.91, 11677.95, 11621.72, 11575.81, 11546.59, 11532.99, 11540.53, 11488.31, 11546.96, 11537.16, 11684.77, 11735.54, 11793.5, 11755.83, 11774.05, 11832.89, 11993.58, 12058.66, 12083.34, 12131.19, 12203.87, 12142.0, 12106.05, 12083.53, 12074.06, 12034.04, 12055.65, 12016.87, 12021.95, 12011.59, 11988.62, 11971.99, 11891.6, 11863.61, 11876.75, 11898.62, 11863.66, 11899.92, 11903.46, 11954.29, 11886.92, 11871.36, 11852.24, 11745.08, 11752.38, 11712.37, 11725.83, 11736.88, 11734.78, 11775.53, 11769.31, 11807.52, 11799.28, 11772.24, 11769.52, 11778.13, 11816.41, 11853.84, 11865.32, 11789.09, 11715.45, 11660.21, 12252.3, 12294.36, 12229.44, 12225.36, 12278.56, 12269.23, 12237.11, 12192.99, 12136.49, 12249.95, 12262.69, 12236.22, 12243.53, 12211.87, 12141.63, 12035.24, 11987.77, 11924.9, 12021.64, 12029.74, 12007.23, 11977.33, 11988.8, 11961.14, 11946.92, 11948.6, 11971.71, 11973.74, 11895.49, 11969.91, 11947.56, 11979.47, 11976.24, 11999.71, 11976.17, 11957.67, 11843.79, 11775.17, 11784.33, 11781.56, 11748.19, 11728.06, 11759.51, 11757.6, 11827.02, 11885.32], "high": [11195.84, 11408.55, 11462.51, 11476.65, 11822.93, 11723.23, 11606.98, 11677.18, 11614.63, 11574.55, 11646.37, 11580.27, 11623.3, 11681.39, 11652.35, 11624.46, 11620.52, 11554.29, 11568.18, 11537.98, 11548.69, 11564.86, 11684.88, 11735.54, 11799.05, 11804.09, 11774.1, 11859.64, 11997.16, 12070.59, 12083.74, 12131.19, 12231.76, 12224.23, 12206.66, 12176.0, 12085.69, 12091.2, 12057.02, 12065.99, 12047.23, 12022.03, 12011.59, 12011.51, 11988.29, 11892.01, 11894.41, 11902.98, 11921.23, 11907.98, 11938.75, 11988.17, 11968.68, 11916.0, 11911.61, 11877.87, 11765.22, 11792.74, 11789.73, 11822.68, 11797.31, 11786.8, 11824.68, 11818.34, 11855.29, 11857.04, 11859.31, 11800.73, 11816.41, 11867.21, 11875.39, 11886.54, 11854.75, 11721.58, 12252.3, 12552.7, 12305.77, 12252.99, 12278.56, 12278.56, 12272.39, 12247.48, 12235.01, 12283.52, 12295.88, 12267.97, 12243.53, 12243.54, 12215.25, 12172.09, 12035.24, 12023.34, 12030.02, 12032.26, 12029.74, 12012.86, 12008.94, 12017.74, 11966.77, 11950.37, 11973.39, 11982.92, 11973.74, 11969.91, 11978.41, 11981.46, 12000.67, 12025.97, 12008.81, 12026.72, 11958.13, 11857.9, 11828.51, 11825.18, 11818.46, 11769.43, 11785.1, 11792.95, 11827.02, 11885.32], "low": [11056.72, 11168.64, 11384.02, 11376.68, 11378.34, 11491.86, 11461.47, 11474.39, 11483.6, 11485.16, 11529.24, 11488.74, 11537.34, 11596.97, 11596.51, 11526.53, 11546.59, 11509.24, 11501.19, 11448.9, 11464.68, 11504.19, 11520.4, 11683.75, 11695.19, 11728.22, 11700.24, 11767.99, 11828.79, 11947.43, 12043.54, 12032.93, 12119.86, 12140.41, 12105.9, 12079.44, 12019.56, 12034.04, 11986.59, 12015.67, 12005.21, 11978.72, 11965.89, 11966.53, 11889.6, 11855.18, 11854.55, 11833.85, 11857.91, 11841.16, 11869.76, 11903.46, 11886.92, 11849.16, 11852.24, 11745.05, 11737.41, 11707.52, 11694.36, 11725.83, 11704.49, 11722.34, 11752.62, 11752.77, 11754.6, 11771.4, 11763.17, 11740.98, 11717.12, 11788.69, 11772.93, 11785.95, 11705.17, 11621.2, 11660.21, 12252.3, 12194.59, 12183.17, 12167.95, 12199.56, 12210.53, 12165.81, 12136.31, 12131.16, 12234.37, 12185.42, 12145.01, 12197.47, 12137.51, 12034.98, 11987.59, 11898.3, 11906.39, 11918.43, 11927.45, 11943.99, 11957.56, 11953.14, 11910.76, 11884.44, 11911.23, 11900.52, 11874.55, 11875.21, 11917.37, 11916.97, 11944.19, 11974.8, 11957.51, 11954.73, 11843.67, 11757.5, 11759.89, 11754.07, 11731.93, 11702.27, 11709.49, 11718.07, 11757.6, 11824.97], "variation": [1.26, 1.69, 0.59, -0.42, 2.63, -1.82, -0.15, 0.55, -0.29, 0.34, 0.32, -0.3, 0.5, 0.66, -0.48, -0.4, -0.25, -0.12, 0.07, -0.45, 0.51, -0.08, 1.28, 0.43, 0.49, -0.32, 0.15, 0.5, 1.36, 0.54, 0.2, 0.4, 0.6, -0.51, -0.3, -0.19, -0.08, -0.33, 0.18, -0.32, 0.04, -0.09, -0.19, -0.14, -0.67, -0.24, 0.11, 0.18, -0.29, 0.31, 0.03, 0.43, -0.56, -0.13, -0.16, -0.9, 0.06, -0.34, 0.11, 0.09, -0.02, 0.35, -0.05, 0.32, -0.07, -0.23, -0.02, 0.07, 0.33, 0.32, 0.1, -0.64, -0.62, -0.47, 5.08, 0.34, -0.53, -0.03, 0.44, -0.08, -0.26, -0.36, -0.46, 0.93, 0.1, -0.22, 0.06, -0.26, -0.58, -0.88, -0.39, -0.52, 0.81, 0.07, -0.19, -0.25, 0.1, -0.23, -0.12, 0.01, 0.19, 0.02, -0.65, 0.63, -0.19, 0.27, -0.03, 0.2, -0.2, -0.15, -0.95, -0.58, 0.08, -0.02, -0.28, -0.17, 0.27, -0.02, 0.59, 0.49], "latest": 11885.32, "latest_var": 0.49, "max_all": 13991.47, "min_all": 8796.65, "total_sessions": 2366}, "reserves": {"dates": ["2023-06-28", "2023-06-30", "2023-07-07", "2023-07-14", "2023-07-21", "2023-07-28", "2023-08-04", "2023-08-11", "2023-08-18", "2023-08-25", "2023-09-01", "2023-09-08", "2023-09-15", "2023-09-22", "2023-09-27", "2023-10-06", "2023-10-13", "2023-10-20", "2023-10-27", "2023-11-02", "2023-11-03", "2023-11-10", "2023-11-17", "2023-11-24"], "total": [344.78, 344.78, 341.68, 343.51, 344.28, 341.93, 348.57, 350.58, 351.69, 355.27, 359.0, 355.27, 357.16, 356.44, 355.27, 354.22, 352.91, 356.52, 355.79, 354.37, 356.22, 354.34, 354.64, 353.43], "or_monetaire": [13.39, 13.39, 13.36, 13.48, 13.62, 13.56, 13.48, 13.48, 13.45, 13.78, 14.06, 13.89, 14.0, 14.05, 13.87, 13.33, 13.81, 14.57, 14.5, 14.5, 14.5, 14.22, 14.37, 14.34], "monnaies": [12.33, 12.33, 12.77, 11.74, 11.6, 12.16, 12.82, 15.05, 16.32, 18.19, 20.01, 20.53, 19.14, 17.88, 16.85, 15.24, 13.53, 12.42, 10.92, 9.56, 10.38, 10.5, 11.16, 10.65], "depots": [297.41, 297.41, 294.0, 296.7, 297.44, 294.65, 300.66, 300.54, 300.28, 301.45, 302.91, 299.02, 301.96, 302.48, 302.54, 303.65, 303.65, 307.46, 308.39, 308.36, 309.36, 307.91, 307.41, 306.76], "latest": 353.43, "or_latest": 14.34}, "inflation": {"months": ["2022-01", "2022-02", "2022-03", "2022-04", "2022-05", "2022-06", "2022-07", "2022-08", "2022-09", "2022-10", "2022-11", "2022-12", "2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09"], "inflation": [3.1, 3.61, 5.26, 5.88, 5.86, 7.16, 7.71, 8.0, 8.3, 8.1, 8.3, 8.3, 8.9, 10.1, 8.2, 7.8, 7.1, 5.5, 4.9, 5.0, 4.9], "sj": [3.9, 4.38, 4.8, 5.49, 6.72, 7.48, 7.63, 7.55, 7.4, 7.6, 8.0, 8.3, 8.4, 8.5, 7.9, 7.3, 6.1, 5.3, 5.1, 4.7, 4.4], "latest": 4.9, "latest_sj": 4.4}, "sectors": {"names": ["PARTICIPATION ET PROMOTION IMM", "INDUSTRIE PHARMACEUTIQUE", "LOISIRS ET HOTELS", "SYLVICULTURE & PAPIER", "INGENIERIES & BIENS D’EQUIPEME", "SERVICES DE TRANSPORT", "DISTRIBUTEURS", "ELECTRICITE", "BATIMENT & MATERIAUX DE CONSTR", "SOCIETES DE PLACEMENT IMMOBILI", "ASSURANCES", "BANQUES", "MINES", "CHIMIE", "SOCIETES DE PORTEFEUILLES - HO", "PETROLE & GAZ", "AGROALIMENTAIRE & PRODUCTION", "TRANSPORT", "SOCIETE DE FINANCEMENT & AUTRE", "MATERIELS,LOGICIELS & SERVICES", "BOISSONS", "TELECOMMUNICATIONS"], "perf": [120.13, 103.41, 84.21, 52.51, 31.67, 29.52, 22.73, 14.75, 14.38, 12.29, 11.78, 10.33, 7.53, 6.09, 6.06, 3.87, 3.63, 0.81, -1.95, -2.21, -2.51, -33.37]}, "monia": {"dates": ["2023-07-26", "2023-07-27", "2023-07-28", "2023-07-31", "2023-08-01", "2023-08-02", "2023-08-03", "2023-08-04", "2023-08-07", "2023-08-08", "2023-08-09", "2023-08-10", "2023-08-11", "2023-08-15", "2023-08-16", "2023-08-17", "2023-08-18", "2023-08-22", "2023-08-23", "2023-08-24", "2023-08-25", "2023-08-28", "2023-08-29", "2023-08-30", "2023-08-31", "2023-09-01", "2023-09-04", "2023-09-05", "2023-09-06", "2023-09-07", "2023-09-08", "2023-09-11", "2023-09-12", "2023-09-13", "2023-09-14", "2023-09-15", "2023-09-18", "2023-09-19", "2023-09-20", "2023-09-21", "2023-09-22", "2023-09-25", "2023-09-26", "2023-09-27", "2023-10-02", "2023-10-03", "2023-10-04", "2023-10-05", "2023-10-06", "2023-10-09", "2023-10-10", "2023-10-11", "2023-10-12", "2023-10-13", "2023-10-16", "2023-10-17", "2023-10-18", "2023-10-19", "2023-10-20", "2023-10-23", "2023-10-24", "2023-10-25", "2023-10-26", "2023-10-27", "2023-10-30", "2023-10-31", "2023-11-01", "2023-11-02", "2023-11-03", "2023-11-07", "2023-11-08", "2023-11-09", "2023-11-13", "2023-11-14", "2023-11-15", "2023-11-16", "2023-11-17", "2023-11-20", "2023-11-21", "2023-11-22", "2023-11-23", "2023-11-24", "2023-11-27", "2023-11-28", "2023-11-29", "2023-11-30", "2023-12-01", "2023-12-04", "2023-12-05", "2023-12-06"], "vals": [2.937, 2.924, 2.943, 2.97, 2.963, 2.941, 2.946, 2.939, 2.868, 2.951, 2.949, 2.938, 2.93, 2.914, 2.916, 2.912, 2.922, 2.926, 2.907, 2.914, 2.92, 2.928, 2.926, 2.937, 2.955, 2.939, 2.926, 2.918, 2.905, 2.944, 2.937, 2.928, 2.909, 2.916, 2.928, 2.909, 2.925, 2.903, 2.914, 2.914, 2.937, 2.892, 2.956, 3.018, 2.985, 2.989, 2.964, 2.941, 2.928, 2.953, 2.873, 2.926, 2.935, 2.954, 2.947, 2.931, 2.938, 2.933, 2.908, 2.921, 2.931, 2.924, 2.939, 2.924, 2.945, 2.946, 2.927, 2.925, 2.933, 2.935, 2.93, 2.928, 2.936, 2.932, 2.936, 2.898, 2.934, 2.897, 2.898, 2.893, 2.923, 2.917, 2.921, 2.919, 2.925, 2.953, 2.919, 2.955, 2.969, 2.936], "vol": [8929, 12269, 7098, 6692, 7498, 11076, 9953, 10253, 13841, 11077, 10936, 10295, 10184, 11382, 9731, 11653, 10180, 9059, 12694, 9417, 10834, 9610, 8903, 9729, 11483, 9525, 10278, 12041, 13905, 9964, 10006, 11520, 14209, 14350, 12137, 13655, 10271, 15363, 12168, 13549, 10259, 13038, 9172, 13751, 6930, 9517, 12313, 7612, 7662, 10486, 8648, 13656, 9380, 11054, 11112, 10873, 11236, 9804, 11827, 13291, 12491, 11514, 7982, 12244, 8623, 8238, 11198, 8281, 9967, 10830, 11336, 9599, 9818, 9272, 9156, 10076, 9601, 13134, 15244, 11818, 8528, 11513, 10702, 10936, 10053, 8483, 11834, 9010, 7015, 10072], "latest": 2.936, "avg_vol": 10643}, "tmp": {"dates": ["2023-10-08", "2023-10-09", "2023-10-10", "2023-10-11", "2023-10-12", "2023-10-13", "2023-10-15", "2023-10-16", "2023-10-17", "2023-10-18", "2023-10-19", "2023-10-20", "2023-10-21", "2023-10-22", "2023-10-23", "2023-10-24", "2023-10-25", "2023-10-26", "2023-10-27", "2023-10-28", "2023-10-29", "2023-10-30", "2023-10-31", "2023-11-01", "2023-11-02", "2023-11-03", "2023-11-04", "2023-11-05", "2023-11-06", "2023-11-07", "2023-11-08", "2023-11-09", "2023-11-10", "2023-11-11", "2023-11-12", "2023-11-13", "2023-11-14", "2023-11-15", "2023-11-16", "2023-11-17", "2023-11-18", "2023-11-19", "2023-11-20", "2023-11-21", "2023-11-22", "2023-11-23", "2023-11-24", "2023-11-25", "2023-11-26", "2023-11-27", "2023-11-28", "2023-11-29", "2023-11-30", "2023-12-01", "2023-12-02", "2023-12-03", "2023-12-04", "2023-12-05", "2023-12-06", "2023-12-07"], "taux": [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.001, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.002, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0], "volume": [0.0, 2861.0, 4245.0, 3013.0, 2928.0, 3340.0, 0.0, 3694.0, 3042.0, 3193.0, 2381.0, 1788.0, 0.0, 0.0, 1223.0, 1432.0, 1446.0, 2901.0, 2638.0, 0.0, 0.0, 2980.0, 1565.0, 2729.0, 1705.0, 1847.0, 0.0, 0.0, 0.0, 1831.0, 2281.0, 2549.0, 1963.0, 0.0, 0.0, 2260.0, 2322.0, 3652.0, 2330.0, 2104.0, 0.0, 0.0, 1797.0, 2117.0, 1899.0, 2044.0, 1772.0, 0.0, 0.0, 1886.0, 2040.0, 1533.0, 1760.0, 2869.0, 0.0, 0.0, 4703.0, 3022.0, 2389.0, 2199.0], "latest_taux": 3.0}};
+
+// ─── UTILS ───────────────────────────────────────────────
+function fmt(n, dec=2) { return n.toLocaleString('fr-MA', {minimumFractionDigits:dec, maximumFractionDigits:dec}); }
+function fmtDate(s) { return s ? s.substring(0,10) : ''; }
+const GREEN = '#006633', GOLD = '#D4A017', RED = '#c0392b', LIGHT_GREEN = '#00884d';
+const COLORS = ['#006633','#D4A017','#00884d','#c0392b','#2980b9','#8e44ad','#16a085','#d35400','#27ae60','#2c3e50'];
+
+// ─── HEADER ──────────────────────────────────────────────
+document.getElementById('hdrMasi').textContent = fmt(D.masi.latest);
+const v = D.masi.latest_var;
+const hdrVar = document.getElementById('hdrVar');
+hdrVar.textContent = (v>=0?'+':'')+fmt(v)+'%';
+hdrVar.className = 'header-masi-var '+(v>=0?'var-pos':'var-neg');
+
+// ─── TAB SWITCH ──────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ─── KPI BUILDER ─────────────────────────────────────────
+function buildKPI(containerId, items) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = items.map(item => `
+    <div class="kpi-card ${item.gold?'gold':''}">
+      <div class="kpi-label">${item.label}</div>
+      <div class="kpi-value">${item.value}</div>
+      <div class="kpi-sub">${item.sub||''}</div>
+      ${item.badge?`<span class="kpi-badge ${item.badgeClass}">${item.badge}</span>`:''}
+    </div>
+  `).join('');
+}
+
+// ─── TAB 1: MASI KPIs ────────────────────────────────────
+const masiVar = D.masi.latest_var;
+buildKPI('kpiMasi', [
+  {label:'Indice MASI — Clôture', value: fmt(D.masi.latest), sub:'Dernière séance disponible', badge: (masiVar>=0?'+':'')+fmt(masiVar)+'%', badgeClass: masiVar>=0?'badge-up':'badge-down'},
+  {label:'Plus Haut Historique', value: fmt(D.masi.max_all), sub:'Sur la période analysée', gold:true},
+  {label:'Plus Bas Historique', value: fmt(D.masi.min_all), sub:'Sur la période analysée'},
+  {label:'Séances Analysées', value: D.masi.total_sessions.toLocaleString('fr'), sub:'Données historiques'},
+]);
+
+// ─── MASI LINE CHART ─────────────────────────────────────
+const masiLineCtx = document.getElementById('masiLine').getContext('2d');
+new Chart(masiLineCtx, {
+  type:'line',
+  data:{
+    labels: D.masi.dates,
+    datasets:[{
+      label:'MASI Clôture',
+      data: D.masi.close,
+      borderColor: GREEN,
+      backgroundColor: 'rgba(0,102,51,0.08)',
+      borderWidth: 2,
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index', intersect:false},
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` Clôture: ${fmt(ctx.raw)}`}}},
+    scales:{
+      x:{ticks:{maxRotation:0, maxTicksLimit:10, font:{size:11}}, grid:{display:false}},
+      y:{ticks:{callback:v=>fmt(v,0), font:{size:11}}, grid:{color:'rgba(0,102,51,0.06)'}}
+    }
+  }
+});
+
+// ─── MASI BAR (Variations) ───────────────────────────────
+const masiBarCtx = document.getElementById('masiBar').getContext('2d');
+const barColors = D.masi.variation.slice(-60).map(v=>v>=0?'rgba(0,136,77,0.85)':'rgba(192,57,43,0.85)');
+new Chart(masiBarCtx, {
+  type:'bar',
+  data:{
+    labels: D.masi.dates.slice(-60),
+    datasets:[{
+      label:'Variation %',
+      data: D.masi.variation.slice(-60),
+      backgroundColor: barColors,
+      borderRadius:2,
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)}%`}}},
+    scales:{
+      x:{ticks:{maxRotation:0, maxTicksLimit:8, font:{size:10}}, grid:{display:false}},
+      y:{ticks:{callback:v=>v+'%', font:{size:10}}, grid:{color:'rgba(0,102,51,0.06)'}},
+    }
+  }
+});
+
+// ─── MASI Range Chart ────────────────────────────────────
+const masiRangeCtx = document.getElementById('masiRange').getContext('2d');
+new Chart(masiRangeCtx, {
+  type:'line',
+  data:{
+    labels: D.masi.dates.slice(-60),
+    datasets:[
+      {label:'Plus Haut', data:D.masi.high.slice(-60), borderColor:GOLD, backgroundColor:'rgba(212,160,23,0.08)', borderWidth:1.5, fill:'+1', tension:0.3, pointRadius:0},
+      {label:'Plus Bas', data:D.masi.low.slice(-60), borderColor:'rgba(192,57,43,0.7)', backgroundColor:'rgba(192,57,43,0.04)', borderWidth:1.5, fill:false, tension:0.3, pointRadius:0},
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{labels:{boxWidth:12, font:{size:11}}}},
+    scales:{
+      x:{ticks:{maxRotation:0, maxTicksLimit:8, font:{size:10}}, grid:{display:false}},
+      y:{ticks:{callback:v=>fmt(v,0), font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'}}
+    }
+  }
+});
+
+// ─── MASI TABLE ──────────────────────────────────────────
+const masiRows = D.masi.dates.map((d,i) => ({
+  date:d, close:D.masi.close[i], high:D.masi.high[i], low:D.masi.low[i],
+  open:D.masi.close[i], prev:D.masi.close[i], var:D.masi.variation[i]
+})).reverse();
+let masiPage = 0; const masiPerPage = 10;
+function renderMasiTable() {
+  const rows = masiRows.slice(masiPage*masiPerPage, (masiPage+1)*masiPerPage);
+  document.getElementById('masiTableBody').innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.date}</td>
+      <td><strong>${fmt(r.close)}</strong></td>
+      <td>${fmt(r.high)}</td>
+      <td>${fmt(r.low)}</td>
+      <td>${fmt(r.open)}</td>
+      <td>${fmt(r.prev)}</td>
+      <td class="${r.var>=0?'positive':'negative'}">${r.var>=0?'+':''}${fmt(r.var)}%</td>
+    </tr>
+  `).join('');
+  const total = Math.ceil(masiRows.length/masiPerPage);
+  document.getElementById('masiTableInfo').textContent = `Page ${masiPage+1} sur ${total} — ${masiRows.length} séances`;
+  let pages = '';
+  pages += `<button class="page-btn" onclick="masiPage=Math.max(0,masiPage-1);renderMasiTable()">‹</button>`;
+  for(let i=0;i<total;i++) {
+    if(i<3||i>total-3||Math.abs(i-masiPage)<2)
+      pages += `<button class="page-btn ${i===masiPage?'active':''}" onclick="masiPage=${i};renderMasiTable()">${i+1}</button>`;
+    else if(Math.abs(i-masiPage)===2) pages += `<span style="padding:0 4px;color:#999">…</span>`;
+  }
+  pages += `<button class="page-btn" onclick="masiPage=Math.min(${total-1},masiPage+1);renderMasiTable()">›</button>`;
+  document.getElementById('masiPagination').innerHTML = pages;
+}
+renderMasiTable();
+
+// ─── TAB 2: MACRO KPIs ───────────────────────────────────
+buildKPI('kpiMacro', [
+  {label:'Réserves Officielles', value: fmt(D.reserves.latest)+' Mds', sub:'Dernière semaine disponible (MAD)', gold:true},
+  {label:'Or Monétaire', value: fmt(D.reserves.or_latest)+' Mds', sub:'Part des réserves en or'},
+  {label:'Inflation Générale', value: D.inflation.latest+'%', sub:'Dernier mois disponible (2023)', badge: D.inflation.latest>5?'⚠ Élevée':'✓ En baisse', badgeClass: D.inflation.latest>5?'badge-down':'badge-up'},
+  {label:'Inflation Sous-Jacente', value: D.inflation.latest_sj+'%', sub:'Hors énergie & alimentation'},
+]);
+
+// ─── RESERVE CHART ───────────────────────────────────────
+new Chart(document.getElementById('reserveChart').getContext('2d'), {
+  type:'line',
+  data:{
+    labels: D.reserves.dates,
+    datasets:[{
+      label:'Réserves totales (Mds MAD)',
+      data: D.reserves.total,
+      borderColor: GREEN,
+      backgroundColor:'rgba(0,102,51,0.09)',
+      fill:true, tension:0.3, borderWidth:2, pointRadius:3, pointBackgroundColor:GREEN,
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)} Mds MAD`}}},
+    scales:{
+      x:{ticks:{maxRotation:30, maxTicksLimit:8, font:{size:10}}, grid:{display:false}},
+      y:{ticks:{callback:v=>fmt(v,0)+' Mds', font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'}}
+    }
+  }
+});
+
+// ─── INFLATION CHART ─────────────────────────────────────
+new Chart(document.getElementById('inflationChart').getContext('2d'), {
+  type:'line',
+  data:{
+    labels: D.inflation.months,
+    datasets:[
+      {label:'Inflation générale', data:D.inflation.inflation, borderColor:RED, backgroundColor:'rgba(192,57,43,0.08)', fill:true, tension:0.4, borderWidth:2, pointRadius:4},
+      {label:'Inflation sous-jacente', data:D.inflation.sj, borderColor:GOLD, backgroundColor:'rgba(212,160,23,0.05)', fill:false, tension:0.4, borderWidth:2, pointRadius:4, borderDash:[5,4]},
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{boxWidth:12, font:{size:11}}}, tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)}%`}}},
+    scales:{
+      x:{ticks:{maxRotation:30, maxTicksLimit:10, font:{size:10}}, grid:{display:false}},
+      y:{ticks:{callback:v=>v+'%', font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'}, suggestedMin:0}
+    }
+  }
+});
+
+// ─── RESERVE DONUT ───────────────────────────────────────
+const latestR = D.reserves;
+new Chart(document.getElementById('reserveDonut').getContext('2d'), {
+  type:'doughnut',
+  data:{
+    labels:['Or Monétaire','Monnaies Étrangères','Dépôts & Titres'],
+    datasets:[{
+      data:[latestR.or_latest, latestR.monnaies[latestR.monnaies.length-1], latestR.depots[latestR.depots.length-1]],
+      backgroundColor:[GOLD, GREEN, '#2980b9'],
+      borderWidth:2,
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{position:'right', labels:{boxWidth:14, font:{size:12}}},
+      tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)} Mds MAD (${fmt(ctx.raw/latestR.total[latestR.total.length-1]*100,1)}%)`}}
+    }
+  }
+});
+
+// ─── TAB 3: SECTEURS ─────────────────────────────────────
+const topSect = D.sectors.names.slice(0,1);
+buildKPI('kpiSect', [
+  {label:'Meilleur Secteur', value: D.sectors.names[0].substring(0,22), sub:'+'+D.sectors.perf[0]+'% de performance', gold:true},
+  {label:'Secteurs en Hausse', value: D.sectors.perf.filter(p=>p>0).length+' / '+D.sectors.names.length, sub:'Sur la période totale'},
+  {label:'Secteurs en Baisse', value: D.sectors.perf.filter(p=>p<0).length+' / '+D.sectors.names.length, sub:'Variation négative'},
+  {label:'Performance Max', value: '+'+fmt(Math.max(...D.sectors.perf))+'%', sub:'Meilleure valorisation secteur', badge:'🏆 Top', badgeClass:'badge-up'},
+]);
+
+// ─── SECTORS BAR ─────────────────────────────────────────
+new Chart(document.getElementById('sectChart').getContext('2d'), {
+  type:'bar',
+  data:{
+    labels: D.sectors.names.map(s=>s.length>22?s.substring(0,22)+'…':s),
+    datasets:[{
+      label:'Performance %',
+      data: D.sectors.perf,
+      backgroundColor: D.sectors.perf.map(p=>p>=0?'rgba(0,102,51,0.82)':'rgba(192,57,43,0.82)'),
+      borderRadius:4,
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    indexAxis:'y',
+    plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)}%`}}
+    },
+    scales:{
+      x:{ticks:{callback:v=>v+'%', font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'}},
+      y:{ticks:{font:{size:10}}, grid:{display:false}}
+    }
+  }
+});
+
+// ─── TOP 10 SECTORS ──────────────────────────────────────
+new Chart(document.getElementById('sectTop10').getContext('2d'), {
+  type:'bar',
+  data:{
+    labels: D.sectors.names.slice(0,10).map(s=>s.length>18?s.substring(0,18)+'…':s),
+    datasets:[{
+      label:'Perf. %',
+      data: D.sectors.perf.slice(0,10),
+      backgroundColor: COLORS,
+      borderRadius:6,
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)}%`}}},
+    scales:{
+      x:{ticks:{font:{size:10}}, grid:{display:false}},
+      y:{ticks:{callback:v=>v+'%', font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'}}
+    }
+  }
+});
+
+// ─── TAB 4: TAUX KPIs ────────────────────────────────────
+buildKPI('kpiTaux', [
+  {label:'Indice MONIA', value: D.monia.latest+'%', sub:'Dernier taux disponible', gold:true},
+  {label:'Volume Moyen MONIA', value: (D.monia.avg_vol/1000).toFixed(1)+' Mds', sub:'Volumes interbancaires JJ (MAD)'},
+  {label:'TMP Taux Directeur', value: D.tmp.latest_taux+'%', sub:'Taux moyen pondéré — dernière séance'},
+  {label:'Séances TMP analysées', value: D.tmp.dates.length, sub:'Marché des bons du Trésor'},
+]);
+
+// ─── MONIA CHART ─────────────────────────────────────────
+new Chart(document.getElementById('moniaChart').getContext('2d'), {
+  type:'line',
+  data:{
+    labels: D.monia.dates,
+    datasets:[{
+      label:'Indice MONIA (%)',
+      data: D.monia.vals,
+      borderColor: GREEN,
+      backgroundColor:'rgba(0,102,51,0.09)',
+      fill:true, tension:0.3, borderWidth:2, pointRadius:2, pointHoverRadius:5,
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.raw}%`}}},
+    scales:{
+      x:{ticks:{maxRotation:0, maxTicksLimit:8, font:{size:10}}, grid:{display:false}},
+      y:{ticks:{callback:v=>v+'%', font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'}, suggestedMin:2, suggestedMax:4}
+    }
+  }
+});
+
+// ─── MONIA VOL ───────────────────────────────────────────
+new Chart(document.getElementById('moniaVol').getContext('2d'), {
+  type:'bar',
+  data:{
+    labels: D.monia.dates,
+    datasets:[{
+      label:'Volume JJ (M MAD)',
+      data: D.monia.vol,
+      backgroundColor:'rgba(212,160,23,0.72)',
+      borderRadius:3,
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.raw.toLocaleString('fr')} M MAD`}}},
+    scales:{
+      x:{ticks:{maxRotation:0, maxTicksLimit:8, font:{size:10}}, grid:{display:false}},
+      y:{ticks:{font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'}}
+    }
+  }
+});
+
+// ─── TMP CHART ───────────────────────────────────────────
+new Chart(document.getElementById('tmpChart').getContext('2d'), {
+  type:'line',
+  data:{
+    labels: D.tmp.dates,
+    datasets:[{
+      label:'TMP (%)',
+      data: D.tmp.taux,
+      borderColor: GOLD,
+      backgroundColor:'rgba(212,160,23,0.07)',
+      fill:true, tension:0.2, borderWidth:2.5, pointRadius:0,
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.raw}%`}}},
+    scales:{
+      x:{ticks:{maxRotation:0, maxTicksLimit:10, font:{size:10}}, grid:{display:false}},
+      y:{ticks:{callback:v=>v+'%', font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'}, suggestedMin:2, suggestedMax:4}
+    }
+  }
+});
+
+</script>
+</body>
+</html>
