@@ -1,3 +1,7 @@
+<div align="center">
+
+![Texte alternatif](https://github.com/elbouyassi-crypto/MARCH-S-FINANCIERS-MAROCAINS/blob/main/Image_180x210.png)
+
 # COMPTE RENDU — ANALYSE DES MARCHÉS FINANCIERS MAROCAINS
 ## Dashboard MASI & Indicateurs Macroéconomiques
 
@@ -5,12 +9,12 @@
 
 | **Champ**         | **Information**                                      |
 |-------------------|------------------------------------------------------|
-| **Auteur**        | Elbouni Yassine                                      |
+| **Réalisé**        | Elbouni Yassine                                      |
 | **Date**          | 29 mars 2026                                         |
 | **Institution**   | ENCG Settat — Université Hassan 1er                  |
 | **Objet**         | Analyse du dashboard MASI et indicateurs financiers  |
-| **Source**        | Dataset MASI — Bourse de Casablanca / Bank Al-Maghrib |
-| **Format livré**  | Dashboard HTML interactif + Fichier Excel structuré  |
+
+  
 
 ---
 
@@ -34,11 +38,14 @@ Ce compte rendu présente les résultats de l'analyse du dataset **MASI_indice_D
 
 L'ensemble du travail a été réalisé le **29 mars 2026**, par **Elbouni Yassine**, étudiant à l'ENCG Settat — Université Hassan 1er.
 
----
+<div align="LEFT">
+
 
 ## 2. Périmètre des Données Analysées
 
 Le dataset comprend **8 feuilles distinctes** couvrant plusieurs dimensions des marchés financiers marocains :
+
+
 
 | # | Feuille Source                  | Description                              | Volume       |
 |---|---------------------------------|------------------------------------------|--------------|
